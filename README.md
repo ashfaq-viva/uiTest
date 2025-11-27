@@ -47,7 +47,7 @@ Make sure you have the following installed:
 ---
 # 🔧 Initial Project Setup to run
 
-1. clone the repo  -- git clone "https://github.com/AshfaqSourav/visual-regression-testing-boilerplate-customFramework.git"
+1. clone the repo  -- git clone "https://github.com/ashfaq-viva/uiTest"
 2. Open repo in vs code & pull the latest code from main branch
 3. run in terminal "npm install"
 4. run in terminal "npx playwright install"
@@ -65,7 +65,7 @@ Make sure you have the following installed:
                 nodes: {
               testDesktop: '5214:24158'← Add ":" between nodes instead of "-"
             };
-8. Run npm run figma:download
+8. Run "npm run figma:download"
 
 
 📂 Folder Structure should be like below
@@ -81,6 +81,8 @@ Make sure you have the following installed:
 12. run any test with command and root for example :  npx playwright test "./tests/visualTry/test.spec.js"
 
 13. if you want to manually upload your actual result then provide the actual result in in project root create a folder manualScreenshots then inside that paste the file with name  "test{Viewport}-actual.png" (viewport like Desktop,Laptop,Tablet,Mobile) check that in utils/viewports.js
+
+14. To run specific test --- npx playwright test "./tests/<filename>"
 
 - for any support contact throught email or phone number- 
   Email-ashfaqahmed3339@gmail.com
@@ -106,7 +108,7 @@ playwright-visual-regression/
 ├── pages/                        # Page Object Models (e.g. TestPage)
 │   └── testPage.ts
 │
-├── tests/visual/                # Playwright test specs
+├── tests/               # Playwright test specs
 │   └── test.spec.ts
 │
 ├── utils/                       # Reusable helpers
@@ -182,33 +184,7 @@ to add css validation
 
 make yours like in utils/selectors
 
-follow tests/visualTry/cssValidation.spec.js file for more clearity
-
-
-## 🚀 Run with Docker Compose
-
-1. Make sure you have Docker & Docker Compose are installed.
-2. Run the app:
-   ```bash
-   docker-compose up --build
-
+follow tests/cssValidation.spec.js file for more clearity
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
-docker compose build --no-cache
-docker compose run --rm e2e  
-$env:ENV="80LV_PROD"; docker compose run --rm e2e(powesheell)
-set ENV=80LV_PROD && docker compose run --rm e2e(cmd)
-ENV=80LV_PROD docker compose run --rm e2e (mac/linux )
-docker compose up -d allure allure-ui
-
-docker compose down
-docker volume rm 80lvwebautomation_allure-report 80lvwebautomation_allure-history
-docker compose up -d allure allure-ui
-
-http://localhost:5253/allure-docker-service-ui/projects/default
-http://localhost:5252/allure-docker-service/projects/default/reports/latest/index.html
-
-npm run figma:file
-npm run test:figma
