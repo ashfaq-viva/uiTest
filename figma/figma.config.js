@@ -11,8 +11,6 @@ export const figmaConfig = {
     // landingDesktop: '4614-49797',
     // landingTablet: '4614-51777',
     // landingMobile: '4614-53716',
-    videoCardLaptop: '6040-23125',
-    // demoHeroLaptop: '4648-62616',
   },
   outputDir: './expected_screenshots'
 };
