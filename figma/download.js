@@ -16,57 +16,62 @@ function chunkEntries(entries, size) {
   return chunks;
 }
 
-/**
- * Convert user-friendly dash IDs like "5605-21876" to Figma's "5605:21876".
- * If already colon-based, returned as-is. Tries to be conservative.
- */
+/* -----------------------------
+   ⭐ NEW: FETCH WITH RETRY
+----------------------------- */
+async function fetchWithRetry(url, options, maxRetries = 5) {
+  for (let i = 0; i <= maxRetries; i++) {
+    const res = await fetch(url, options);
+
+    if (res.status !== 429) {
+      return res;
+    }
+
+    const wait = 1000 * Math.pow(2, i); // exponential backoff
+    console.warn(`⚠️ Figma rate limit hit (429). Retry ${i + 1}/${maxRetries}. Waiting ${wait}ms...`);
+    await delay(wait);
+  }
+
+  throw new Error("❌ Too many 429 responses from Figma API.");
+}
+
+/* ---------------------------------------- */
+
 function normalizeNodeId(id) {
   if (typeof id !== 'string') return id;
   if (id.includes(':')) return id;
 
-  // Prefer the common "digits-digits" pattern
   const m = id.match(/^(\d+)-(\d+)$/);
   if (m) return `${m[1]}:${m[2]}`;
 
-  // Fallback: replace only the first '-' with ':' (keeps any others intact)
   return id.replace('-', ':');
 }
 
-/**
- * Normalize a node ref that might be:
- * - string: '5605-21876' or '5605:21876'
- * - object: { within: '5605-21876' } or { node: '5605-21876' }
- */
 function normalizeNodeRef(value) {
   if (typeof value === 'string') return normalizeNodeId(value);
-
   if (value && typeof value === 'object') {
-    if ('within' in value) {
-      return normalizeNodeId(value.within);
-    }
-    if ('node' in value) {
-      return normalizeNodeId(value.node);
-    }
+    if ('within' in value) return normalizeNodeId(value.within);
+    if ('node' in value) return normalizeNodeId(value.node);
   }
   throw new Error(`❌ Invalid node format: ${JSON.stringify(value)}`);
 }
 
-function getDirAndFilename(name /*, nodeRef */) {
+function getDirAndFilename(name) {
   const section = name.replace(/(Desktop|Laptop|Tablet|Mobile)$/, '');
   const dir = path.resolve(outputDir, section);
   const filename = `${name}Figma.png`;
   return { dir, filename };
 }
 
+/* ---------------------------------------- */
+
 async function downloadBatch(batch) {
-  // Normalize all node ids up-front
   const normalized = batch.map(([name, nodeRef]) => [name, normalizeNodeRef(nodeRef)]);
   const ids = normalized.map(([, id]) => id).join(',');
-
   const headers = { 'X-Figma-Token': token };
 
-  // 1) Ask figma for image urls
-  const imageRes = await fetch(
+  // --- 1) IMAGES API ---
+  const imageRes = await fetchWithRetry(
     `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(ids)}&format=png&scale=1`,
     { headers }
   );
@@ -77,8 +82,8 @@ async function downloadBatch(batch) {
     return;
   }
 
-  // 2) Get node metadata in the same order
-  const metaRes = await fetch(
+  // --- 2) NODES API ---
+  const metaRes = await fetchWithRetry(
     `https://api.figma.com/v1/files/${fileKey}/nodes?ids=${encodeURIComponent(ids)}`,
     { headers }
   );
@@ -98,11 +103,12 @@ async function downloadBatch(batch) {
       const { dir, filename } = getDirAndFilename(name);
       fs.mkdirSync(dir, { recursive: true });
 
-      // Save PNG
-      const imageBuffer = await (await fetch(imageUrl)).buffer();
-      fs.writeFileSync(path.join(dir, filename), imageBuffer);
+      const imgRes = await fetchWithRetry(imageUrl);
+      const arrayBuffer = await imgRes.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-      // Save node JSON
+      fs.writeFileSync(path.join(dir, filename), buffer);
+
       const jsonPath = path.join(dir, `${name}.json`);
       fs.writeFileSync(jsonPath, JSON.stringify(metadata, null, 2));
 
@@ -113,7 +119,8 @@ async function downloadBatch(batch) {
   }
 }
 
-// Main
+/* ---------------------------------------- */
+
 (async () => {
   if (!token || !fileKey) {
     console.error('❌ Missing FIGMA_TOKEN or FIGMA_FILE_KEY in environment.');
@@ -129,6 +136,6 @@ async function downloadBatch(batch) {
   const batches = chunkEntries(entries, 8);
   for (const batch of batches) {
     await downloadBatch(batch);
-    await delay(800);
+    await delay(800); // small cooldown
   }
 })();
